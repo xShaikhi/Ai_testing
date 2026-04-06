@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لعبة اكس او</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      color: #e94560;
+    }
+
+    #status {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      min-height: 1.8em;
+      color: #a8dadc;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 110px);
+      grid-template-rows: repeat(3, 110px);
+      gap: 8px;
+    }
+
+    .cell {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      border-radius: 12px;
+      font-size: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      user-select: none;
+    }
+
+    .cell:hover:not(.taken) {
+      background: #0f3460;
+      transform: scale(1.05);
+    }
+
+    .cell.x { color: #e94560; }
+    .cell.o { color: #a8dadc; }
+
+    .cell.win {
+      background: #0f3460;
+      border-color: #e94560;
+    }
+
+    #controls {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      padding: 10px 28px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    #restart {
+      background: #e94560;
+      color: #fff;
+    }
+
+    #scores {
+      margin-top: 20px;
+      font-size: 1rem;
+      display: flex;
+      gap: 30px;
+      color: #ccc;
+    }
+
+    #scores span { color: #fff; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>اكس او ❌⭕</h1>
+<div id="status">دور اللاعب X</div>
+
+<div id="board">
+  <div class="cell" data-i="0"></div>
+  <div class="cell" data-i="1"></div>
+  <div class="cell" data-i="2"></div>
+  <div class="cell" data-i="3"></div>
+  <div class="cell" data-i="4"></div>
+  <div class="cell" data-i="5"></div>
+  <div class="cell" data-i="6"></div>
+  <div class="cell" data-i="7"></div>
+  <div class="cell" data-i="8"></div>
+</div>
+
+<div id="controls">
+  <button id="restart">لعبة جديدة</button>
+</div>
+
+<div id="scores">
+  X يفوز: <span id="scoreX">0</span>
+  &nbsp;|&nbsp;
+  تعادل: <span id="scoreDraw">0</span>
+  &nbsp;|&nbsp;
+  O يفوز: <span id="scoreO">0</span>
+</div>
+
+<script>
+  const cells = document.querySelectorAll('.cell');
+  const status = document.getElementById('status');
+  const scoreX = document.getElementById('scoreX');
+  const scoreO = document.getElementById('scoreO');
+  const scoreDraw = document.getElementById('scoreDraw');
+
+  const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  let board, current, over, scores = {X:0, O:0, D:0};
+
+  function init() {
+    board = Array(9).fill('');
+    current = 'X';
+    over = false;
+    cells.forEach(c => {
+      c.textContent = '';
+      c.className = 'cell';
+    });
+    status.textContent = `دور اللاعب ${current}`;
+  }
+
+  function checkWinner() {
+    for (const [a,b,c] of wins) {
+      if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+        [a,b,c].forEach(i => cells[i].classList.add('win'));
+        return board[a];
+      }
+    }
+    return board.every(Boolean) ? 'D' : null;
+  }
+
+  cells.forEach(cell => {
+    cell.addEventListener('click', () => {
+      const i = +cell.dataset.i;
+      if (over || board[i]) return;
+
+      board[i] = current;
+      cell.textContent = current === 'X' ? '❌' : '⭕';
+      cell.classList.add('taken', current.toLowerCase());
+
+      const result = checkWinner();
+      if (result) {
+        over = true;
+        if (result === 'D') {
+          status.textContent = 'تعادل!';
+          scores.D++;
+          scoreDraw.textContent = scores.D;
+        } else {
+          status.textContent = `اللاعب ${result} فاز! 🎉`;
+          scores[result]++;
+          scoreX.textContent = scores.X;
+          scoreO.textContent = scores.O;
+        }
+      } else {
+        current = current === 'X' ? 'O' : 'X';
+        status.textContent = `دور اللاعب ${current}`;
+      }
+    });
+  });
+
+  document.getElementById('restart').addEventListener('click', init);
+
+  init();
+</script>
+
+</body>
+</html>
