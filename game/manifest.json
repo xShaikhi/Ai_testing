@@ -1,0 +1,18 @@
+{
+  "name": "Runner Game - اجمع الكوينز",
+  "short_name": "Runner",
+  "description": "لعبة جري - اجمع الكوينز وتجنب العوائق",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#16213e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
