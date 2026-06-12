@@ -1,0 +1,28 @@
+{
+  "name": "PolarBearMinigames",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "GameShared": {
+        "$path": "src/ReplicatedStorage/GameShared"
+      },
+      "Assets": {
+        "$path": "src/ReplicatedStorage/Assets"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "src/ServerScriptService"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "GameClient": {
+          "$path": "src/StarterPlayer/StarterPlayerScripts/GameClient"
+        }
+      }
+    }
+  }
+}
