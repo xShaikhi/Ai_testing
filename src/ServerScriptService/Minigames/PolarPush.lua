@@ -27,15 +27,15 @@ local BREAKABLE_BORDER_NAME_PATTERNS = {
 	"breakableborder",
 }
 
-local PUSH_DURATION = 0.68
+local PUSH_DURATION = 0.58
 local PUSH_COOLDOWN = 2
-local PUSH_SPEED = 62
-local PUSH_HEIGHT = 9
-local PUSH_AFTER_SPEED = 28
+local PUSH_SPEED = 54
+local PUSH_HEIGHT = 5
+local PUSH_AFTER_SPEED = 14
 local PUSH_HITBOX_OFFSET = -4.2
 local PUSH_HITBOX_RADIUS = 13.25
 local PUSH_HEAD_HITBOX_OFFSET = -4.2
-local PUSH_TARGET_POWER = 145
+local PUSH_TARGET_POWER = 118
 local PUSH_SPEED_POWER_BONUS_CAP = 0.45
 local PRIMARY_COOLDOWN_END_ATTRIBUTE = "PrimaryActionCooldownEndsAt"
 local PRIMARY_COOLDOWN_DURATION_ATTRIBUTE = "PrimaryActionCooldownDuration"
@@ -44,15 +44,15 @@ local WALL_HIT_RANGE = 12
 local COLLISION_DISTANCE = 7.2
 local WALL_MAX_HEALTH = 2
 local MODIFIER_INTERVAL = 12
-local MODIFIER_RADIUS = 13
+local MODIFIER_RADIUS = 38
 local FALL_Y_OFFSET = -12
 local FALL_RADIUS_BUFFER = 12
-local MIN_WORKSPACE_RADIUS = 35
-local TARGET_WORKSPACE_RADIUS = 35
+local MIN_WORKSPACE_RADIUS = 50
+local TARGET_WORKSPACE_RADIUS = 50
 local GROUND_STABILIZE_RAY_UP = 3
 local GROUND_STABILIZE_RAY_DOWN = 14
 local GROUND_STABILIZE_PADDING = 0.15
-local ICE_PHYSICS = PhysicalProperties.new(0.7, 0.015, 0.45, 0.08, 1)
+local ICE_PHYSICS = PhysicalProperties.new(0.7, 0.004, 0.16, 0.01, 1)
 local ICE_SPIKES_SOURCE_ASSET = "C:\\Users\\mr7am\\OneDrive\\Documents\\Roblox_map\\Aset\\IceSpikes\\IceSpikes_Roblox.blend"
 local ICE_BORDER_SOURCE_ASSET = "C:\\Users\\mr7am\\OneDrive\\Documents\\Roblox_map\\Aset\\IceBorder_Roblox.blend"
 local ICE_BORDER_SOURCE_RADIUS = 9.9956
@@ -78,17 +78,25 @@ local ICE_BORDER_SEGMENTS = {
 	{ name = "IceBorder_19", angle = 0.63403, height = 3.88882 },
 	{ name = "IceBorder_20", angle = 0.31437, height = 3.57199 },
 }
-local ICE_SLIDE_MAX_SPEED = 20
-local ICE_SLIDE_ACCELERATION = 86
-local ICE_SLIDE_DRAG = 0.72
-local ICE_SLIDE_STOP_SPEED = 0.35
-local ICE_SLIDE_PUSH_MEMORY = 0.38
+local ICE_SLIDE_MAX_SPEED = 24
+local ICE_SLIDE_ACCELERATION = 38
+local ICE_SLIDE_DRAG = 0.16
+local ICE_SLIDE_STOP_SPEED = 0.05
+local ICE_SLIDE_PUSH_MEMORY = 0.72
 local MOMENTUM_INTERVAL = 0.2
-local MOMENTUM_SPEED_STEP = 2.6
-local MOMENTUM_MAX_BONUS = 30
+local MOMENTUM_SPEED_STEP = 3.2
+local MOMENTUM_MAX_BONUS = 46
 local MOMENTUM_MIN_MOVE = 0.12
 local MOMENTUM_BLOCK_DURATION = 0.75
 local DEATH_WATER_TOUCH_HEIGHT = 6
+
+-- Visual tuning for the bigger ice arena.
+local ICE_FLOOR_COLOR = Color3.fromRGB(90, 230, 255)
+local ICE_TILE_COLOR = Color3.fromRGB(145, 235, 255)
+local ICE_SPIKE_COLOR = Color3.fromRGB(185, 242, 255)
+local ICE_BORDER_COLOR = Color3.fromRGB(225, 252, 255)
+local ICE_CRACK_COLOR = Color3.fromRGB(80, 170, 255)
+local DARK_WATER_COLOR = Color3.fromRGB(4, 15, 34)
 
 local function normalizedName(name)
 	return string.lower((name or ""):gsub("[^%w]", ""))
@@ -99,7 +107,7 @@ function PolarPush.new(context)
 	self.name = "Polar Push"
 	self.context = context
 	self.origin = context.config.Arenas.PolarPush
-	self.radius = 35
+	self.radius = TARGET_WORKSPACE_RADIUS
 	self.eliminationRadius = self.radius + FALL_RADIUS_BUFFER
 	self.edgeParts = {}
 	self.edgePartSet = {}
@@ -123,7 +131,28 @@ function PolarPush.new(context)
 		self.folder.Name = "PolarPush"
 		self.folder.Parent = context.rootFolder
 	end
-	self:build()
+	local ok, err = xpcall(function()
+		self:build()
+	end, debug.traceback)
+
+	if not ok then
+		warn("[PolarPush] Build failed, using safe prototype fallback: " .. tostring(err))
+		table.clear(self.edgeParts)
+		table.clear(self.edgePartSet)
+		table.clear(self.deathWaterParts)
+		table.clear(self.spawnPoints)
+		self.workspaceMap = nil
+		local fallbackOk, fallbackErr = xpcall(function()
+			self:buildPrototypeMap()
+			self:registerWorkspaceDeathWater()
+			self:updateStudioZoomFocus()
+			Shared.makeBillboard("PolarPushSign", "Polar Push: push players, break ice walls", self.origin + Vector3.new(0, 10, -42), self.folder)
+		end, debug.traceback)
+		if not fallbackOk then
+			warn("[PolarPush] Safe prototype fallback also failed: " .. tostring(fallbackErr))
+		end
+	end
+
 	return self
 end
 
@@ -213,14 +242,145 @@ function PolarPush:build()
 		self:buildPrototypeMap()
 	end
 	self:registerWorkspaceDeathWater()
+	self:updateStudioZoomFocus()
 
 	Shared.makeBillboard("PolarPushSign", "Polar Push: push players, break ice walls", self.origin + Vector3.new(0, 10, -42), self.folder)
 end
 
-function PolarPush:applyIcePhysics(part)
-	if part:IsA("BasePart") and part.Material == Enum.Material.Ice then
-		part.CustomPhysicalProperties = ICE_PHYSICS
+function PolarPush:forcePaintablePart(part)
+	if not part:IsA("BasePart") then
+		return
 	end
+
+	part.CanQuery = true
+	part.CastShadow = false
+	part.Reflectance = math.max(part.Reflectance, 0.1)
+
+	-- Do the expensive imported-asset cleanup only once per part.
+	-- This keeps the color visible on MeshParts without repeating work every round.
+	if part:GetAttribute("PolarPushPaintPrepared") == true then
+		return
+	end
+
+	if part:IsA("MeshPart") then
+		pcall(function()
+			part.UsePartColor = true
+		end)
+		pcall(function()
+			part.TextureID = ""
+		end)
+	end
+
+	for _, child in ipairs(part:GetChildren()) do
+		if child:IsA("SurfaceAppearance") or child:IsA("Texture") or child:IsA("Decal") then
+			pcall(function()
+				child:Destroy()
+			end)
+		end
+	end
+
+	part:SetAttribute("PolarPushPaintPrepared", true)
+end
+
+function PolarPush:applyIcePhysics(part)
+	if part:IsA("BasePart") then
+		self:forcePaintablePart(part)
+		if part.Material == Enum.Material.Ice then
+			part.CustomPhysicalProperties = ICE_PHYSICS
+		end
+	end
+end
+
+function PolarPush:paintIcePart(part, forceBreakable)
+	if not part:IsA("BasePart") then
+		return
+	end
+
+	self:forcePaintablePart(part)
+
+	local normalized = normalizedName(part.Name)
+	local breakable = forceBreakable or self:isWorkspaceBreakableBorderPart(part)
+	local floorLike = self:isWorkspaceArenaFloorPart(part)
+
+	if self:isDeathWaterPart(part) then
+		part.Material = Enum.Material.SmoothPlastic
+		part.Color = DARK_WATER_COLOR
+		part.Transparency = math.min(part.Transparency, 0.18)
+		return
+	end
+
+	if breakable then
+		part.Material = Enum.Material.Ice
+		part.Color = if normalized:find("spike", 1, true) then ICE_SPIKE_COLOR else ICE_BORDER_COLOR
+		part.Transparency = math.min(part.Transparency, 0.12)
+		part.CustomPhysicalProperties = ICE_PHYSICS
+	elseif floorLike then
+		part.Material = Enum.Material.Ice
+		part.Color = ICE_FLOOR_COLOR
+		part.Transparency = math.min(part.Transparency, 0.06)
+		part.CustomPhysicalProperties = ICE_PHYSICS
+	elseif normalized:find("ice", 1, true) then
+		part.Material = Enum.Material.Ice
+		part.Color = ICE_TILE_COLOR
+		part.Transparency = math.min(part.Transparency, 0.18)
+		part.CustomPhysicalProperties = ICE_PHYSICS
+	elseif normalized:find("crack", 1, true) or normalized:find("line", 1, true) then
+		part.Material = Enum.Material.Neon
+		part.Color = ICE_CRACK_COLOR
+		part.Transparency = math.min(part.Transparency, 0.25)
+	end
+
+	part:SetAttribute("PaintedByPolarPush", true)
+end
+
+function PolarPush:paintWorkspaceMap()
+	if not self.workspaceMap then
+		return
+	end
+
+	for _, item in ipairs(self.workspaceMap:GetDescendants()) do
+		if item:IsA("BasePart") then
+			local isBreakable = self.edgePartSet[item] == true or self:isWorkspaceBreakableBorderPart(item)
+			self:paintIcePart(item, isBreakable)
+			if isBreakable then
+				item:SetAttribute("BaseColor", item.Color)
+				item:SetAttribute("BaseTransparency", item.Transparency)
+			end
+		end
+	end
+
+	self:updateStudioZoomFocus()
+end
+
+function PolarPush:updateStudioZoomFocus()
+	local focusName = "PolarPush_ZoomFocus_SelectThis"
+	local parent = self.workspaceMap or self.folder
+	if not parent then
+		return
+	end
+
+	local focus = parent:FindFirstChild(focusName, true)
+	if not (focus and focus:IsA("BasePart")) then
+		focus = Instance.new("Part")
+		focus.Name = focusName
+		focus.Parent = parent
+	end
+
+	local diameter = (self.radius or TARGET_WORKSPACE_RADIUS) * 2 + 28
+	focus.Anchored = true
+	focus.CanCollide = false
+	focus.CanTouch = false
+	focus.CanQuery = true
+	focus.CastShadow = false
+	focus.Transparency = 0.965
+	focus.Material = Enum.Material.ForceField
+	focus.Color = Color3.fromRGB(90, 230, 255)
+	focus.Size = Vector3.new(diameter, 1, diameter)
+	focus.CFrame = CFrame.new(self.origin + Vector3.new(0, -3.2, 0))
+	focus:SetAttribute("Purpose", "Select this part and press F to zoom to the full Polar Push arena in Studio")
+
+	-- Do not set this as PrimaryPart. Some imported models throw errors when
+	-- their PrimaryPart is changed at runtime; selecting this part manually is enough.
 end
 
 function PolarPush:isWorkspaceArenaFloorPart(part)
@@ -260,6 +420,8 @@ function PolarPush:configureWorkspaceArenaPart(part, forceBreakable)
 	else
 		self:applyIcePhysics(part)
 	end
+
+	self:paintIcePart(part, forceBreakable)
 end
 
 function PolarPush:isDeathWaterPart(part)
@@ -384,10 +546,11 @@ function PolarPush:bindWorkspaceMap()
 	end
 
 	local inferredRadius = self:inferWorkspaceRadius()
-	if inferredRadius and inferredRadius > TARGET_WORKSPACE_RADIUS + 0.5 then
+	if inferredRadius and math.abs(inferredRadius - TARGET_WORKSPACE_RADIUS) > 0.5 then
 		self:scaleWorkspaceMap(inferredRadius, TARGET_WORKSPACE_RADIUS)
 		inferredRadius = self:inferWorkspaceRadius()
 	end
+	self:paintWorkspaceMap()
 	if inferredRadius then
 		self.radius = math.max(MIN_WORKSPACE_RADIUS, inferredRadius)
 		self.eliminationRadius = self.radius + FALL_RADIUS_BUFFER
@@ -481,18 +644,20 @@ end
 
 function PolarPush:buildPrototypeMap()
 	if not self.folder:FindFirstChild("DarkWater") then
-		local water = Shared.makePart("DarkWater", Vector3.new(86, 1, 86), CFrame.new(self.origin - Vector3.new(0, 9, 0)), Color3.fromRGB(10, 24, 42), Enum.Material.SmoothPlastic, self.folder)
+		local water = Shared.makePart("DarkWater", Vector3.new(126, 1, 126), CFrame.new(self.origin - Vector3.new(0, 9, 0)), DARK_WATER_COLOR, Enum.Material.SmoothPlastic, self.folder)
 		self:registerDeathWater(water)
 	else
 		local water = self.folder:FindFirstChild("DarkWater")
 		if water and water:IsA("BasePart") then
+			water.Size = Vector3.new(196, 1, 196)
+			water.Color = DARK_WATER_COLOR
 			self:registerDeathWater(water)
 		end
 	end
 
 	local base = self.folder:FindFirstChild("SolidIceBase")
 	if not (base and base:IsA("BasePart")) then
-		base = Shared.makePart("SolidIceBase", Vector3.new(22, 1.8, 22), CFrame.new(self.origin + Vector3.new(0, -4.25, 0)), Color3.fromRGB(118, 214, 255), Enum.Material.Ice, self.folder)
+		base = Shared.makePart("SolidIceBase", Vector3.new(86, 1.8, 86), CFrame.new(self.origin + Vector3.new(0, -4.25, 0)), ICE_FLOOR_COLOR, Enum.Material.Ice, self.folder)
 	end
 	base.CustomPhysicalProperties = ICE_PHYSICS
 
@@ -505,10 +670,10 @@ function PolarPush:buildPrototypeMap()
 	end
 
 	if existingTiles == 0 then
-		for x = -3, 3 do
-			for z = -3, 3 do
-				local offset = Vector3.new(x * 4.55, -3.75, z * 4.55)
-				local tile = Shared.makePart("IceFloorTile", Vector3.new(5.55, 0.45, 5.55), CFrame.new(self.origin + offset), Color3.fromRGB(130, 224, 255), Enum.Material.Ice, self.folder)
+		for x = -7, 7 do
+			for z = -7, 7 do
+				local offset = Vector3.new(x * 6.5, -3.75, z * 6.5)
+				local tile = Shared.makePart("IceFloorTile", Vector3.new(7.2, 0.45, 7.2), CFrame.new(self.origin + offset), ICE_TILE_COLOR, Enum.Material.Ice, self.folder)
 				tile.CanCollide = false
 				tile.CustomPhysicalProperties = ICE_PHYSICS
 			end
@@ -567,7 +732,7 @@ function PolarPush:buildAssetIceBorder()
 		local height = math.max(2.8, segment.height * assetScale)
 		local position = self.origin + Vector3.new(math.cos(angle) * wallRadius, -self.origin.Y + floorTop + height / 2, math.sin(angle) * wallRadius)
 		local lookTarget = Vector3.new(self.origin.X, position.Y, self.origin.Z)
-		local edge = Shared.makePart(segment.name, Vector3.new(segmentWidth, height, segmentDepth), CFrame.lookAt(position, lookTarget), Color3.fromRGB(220, 248, 255), Enum.Material.Ice, wallsFolder)
+		local edge = Shared.makePart(segment.name, Vector3.new(segmentWidth, height, segmentDepth), CFrame.lookAt(position, lookTarget), ICE_BORDER_COLOR, Enum.Material.Ice, wallsFolder)
 		edge.Anchored = true
 		edge.CanTouch = false
 		edge.CustomPhysicalProperties = ICE_PHYSICS
