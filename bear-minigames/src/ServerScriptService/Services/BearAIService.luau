@@ -108,6 +108,9 @@ local function aiLoop(bear, playerState, homePosition)
 				and targetRoot ~= nil
 
 			if not targetAlive then
+				if target then
+					Remotes.get("BearWarning"):FireClient(target, false)
+				end
 				target = nil
 				state = "Patrol"
 			else

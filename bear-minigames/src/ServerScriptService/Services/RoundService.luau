@@ -116,6 +116,10 @@ function RoundService.start()
 				local ok, err = pcall(runOneRound)
 				if not ok then
 					warn("RoundService: round crashed: " .. tostring(err))
+					local bearModule = script.Parent:FindFirstChild("BearAIService")
+					if bearModule then
+						require(bearModule).stop()
+					end
 					MapService.cleanup()
 					PlayerStateService.stopWatching()
 					PlayerStateService.setAll(PlayerStateService.LOBBY)
