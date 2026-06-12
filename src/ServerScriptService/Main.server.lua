@@ -8,6 +8,7 @@ local ColorDrop = require(script.Parent.Minigames.ColorDrop)
 local ArenaBrawl = require(script.Parent.Minigames.ArenaBrawl)
 local PolarPush = require(script.Parent.Minigames.PolarPush)
 local LaserJump = require(script.Parent.Minigames.LaserJump)
+local BearHunt = require(script.Parent.Minigames.BearHunt)
 
 local CONFIG = {
 	Intermission = 10,
@@ -25,6 +26,7 @@ local CONFIG = {
 		ArenaBrawl = Vector3.new(0, 72, 1600),
 		PolarPush = Vector3.new(1600, 72, 0),
 		LaserJump = Vector3.new(0, 72, -1600),
+		BearHunt = Vector3.new(-1600, 72, 1600),
 	},
 }
 
@@ -100,7 +102,7 @@ else
 	rootFolder:SetAttribute("PreservedExistingRoot", true)
 end
 
-for _, childName in ipairs({ "Runtime", "World", "GiantHub", "Portals", "TestNPCs", "ColorDrop", "ArenaBrawl", "LaserJump" }) do
+for _, childName in ipairs({ "Runtime", "World", "GiantHub", "Portals", "TestNPCs", "ColorDrop", "ArenaBrawl", "LaserJump", "BearHunt" }) do
 	local child = rootFolder:FindFirstChild(childName)
 	if child then
 		child:Destroy()
@@ -274,6 +276,7 @@ local function makeTerrainAccents(parent)
 		CONFIG.Arenas.ArenaBrawl,
 		CONFIG.Arenas.PolarPush,
 		CONFIG.Arenas.LaserJump,
+		CONFIG.Arenas.BearHunt,
 	}
 	for index = 1, 46 do
 		local x = random:NextNumber(-330, 330)
@@ -306,6 +309,7 @@ local function buildTerrain()
 	makeMapDome("ArenaBrawl", CONFIG.Arenas.ArenaBrawl, 98, Color3.fromRGB(255, 190, 80), terrainFolder)
 	makeMapDome("PolarPush", CONFIG.Arenas.PolarPush, 94, Color3.fromRGB(120, 220, 255), terrainFolder)
 	makeMapDome("LaserJump", CONFIG.Arenas.LaserJump, 96, Color3.fromRGB(70, 255, 190), terrainFolder)
+	makeMapDome("BearHunt", CONFIG.Arenas.BearHunt, 96, Color3.fromRGB(255, 170, 40), terrainFolder)
 end
 
 local function buildHub()
@@ -345,6 +349,7 @@ addGame("Color Drop", ColorDrop.new)
 addGame("Arena Brawl", ArenaBrawl.new)
 addGame("Polar Push", PolarPush.new)
 addGame("Laser Jump", LaserJump.new)
+addGame("Bear Hunt", BearHunt.new)
 
 local function setLobbyText(text)
 	if lobbySign then
@@ -353,12 +358,13 @@ local function setLobbyText(text)
 end
 
 -- Absolute world spots aligned with the decorative Neon Robot World portal frames.
--- Order matches `games`: 1 ColorDrop, 2 ArenaBrawl, 3 PolarPush, 4 LaserJump.
+-- Order matches `games`: 1 ColorDrop, 2 ArenaBrawl, 3 PolarPush, 4 LaserJump, 5 BearHunt.
 local portalPositions = {
 	Vector3.new(101, 0, -10),
 	Vector3.new(130, 0, -10),
 	Vector3.new(159, 0, -10),
 	Vector3.new(188, 0, -10),
+	Vector3.new(217, 0, -10),
 }
 
 local portalColors = {
@@ -366,6 +372,7 @@ local portalColors = {
 	Color3.fromRGB(255, 190, 80),
 	Color3.fromRGB(120, 220, 255),
 	Color3.fromRGB(70, 255, 190),
+	Color3.fromRGB(255, 170, 40),
 }
 
 local function resetPlayersToLobby()
