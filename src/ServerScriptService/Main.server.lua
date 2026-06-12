@@ -326,12 +326,25 @@ local context = {
 	lobbySign = lobbySign,
 }
 
-local games = {
-	ColorDrop.new(context),
-	ArenaBrawl.new(context),
-	PolarPush.new(context),
-	LaserJump.new(context),
-}
+local games = {}
+
+local function addGame(gameName, constructor)
+	local ok, gameModule = xpcall(function()
+		return constructor(context)
+	end, debug.traceback)
+
+	if ok and gameModule then
+		table.insert(games, gameModule)
+	else
+		warn("[Minigames] Failed to create " .. gameName .. ": " .. tostring(gameModule))
+		announce(gameName .. " failed to load. Check Output.")
+	end
+end
+
+addGame("Color Drop", ColorDrop.new)
+addGame("Arena Brawl", ArenaBrawl.new)
+addGame("Polar Push", PolarPush.new)
+addGame("Laser Jump", LaserJump.new)
 
 local function setLobbyText(text)
 	if lobbySign then
