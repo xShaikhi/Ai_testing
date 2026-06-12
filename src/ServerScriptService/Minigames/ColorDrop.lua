@@ -88,8 +88,8 @@ function ColorDrop:build()
 		end
 	end
 
-	for index, info in ipairs(COLORS) do
-		local angle = (math.pi * 2 / #COLORS) * index
+	for beaconIndex, info in ipairs(COLORS) do
+		local angle = (math.pi * 2 / #COLORS) * beaconIndex
 		local pillar = Shared.makePart(info.name .. "ColorBeacon", Vector3.new(3, 13, 3), CFrame.new(self.origin + Vector3.new(math.cos(angle) * 49, 2.5, math.sin(angle) * 49)), info.color, Enum.Material.Neon, self.folder)
 		pillar:SetAttribute("ColorName", info.name)
 		pillar.Transparency = 0.25

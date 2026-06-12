@@ -170,7 +170,7 @@ local function makeCylinder(name, size, cframe, color, material, parent)
 	return part
 end
 
-local function makeMountainCluster(name, center, color, parent)
+local function _makeMountainCluster(name, center, color, parent)
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
@@ -223,7 +223,7 @@ local function makeMapDome(name, center, radius, color, parent)
 	return folder
 end
 
-local function makeIslandRim(name, center, radius, color, parent)
+local function _makeIslandRim(name, center, radius, color, parent)
 	local folder = Instance.new("Folder")
 	folder.Name = name .. "CartoonRim"
 	folder.Parent = parent
@@ -242,7 +242,7 @@ local function makeIslandRim(name, center, radius, color, parent)
 	end
 end
 
-local function makeCartoonWorldBorder(parent)
+local function _makeCartoonWorldBorder(parent)
 	local borderColor = Color3.fromRGB(255, 212, 84)
 	local wallColor = Color3.fromRGB(35, 42, 58)
 	local half = 388
@@ -310,6 +310,7 @@ local function buildTerrain()
 	makeMapDome("PolarPush", CONFIG.Arenas.PolarPush, 94, Color3.fromRGB(120, 220, 255), terrainFolder)
 	makeMapDome("LaserJump", CONFIG.Arenas.LaserJump, 96, Color3.fromRGB(70, 255, 190), terrainFolder)
 	makeMapDome("BearHunt", CONFIG.Arenas.BearHunt, 96, Color3.fromRGB(255, 170, 40), terrainFolder)
+	makeTerrainAccents(terrainFolder)
 end
 
 local function buildHub()

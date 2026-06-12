@@ -298,7 +298,15 @@ function Shared.clearSubjectTools(subject)
 		return
 	end
 
-	for _, container in ipairs({ subject:FindFirstChildOfClass("Backpack"), subject.Character }) do
+	local containers = {}
+	local backpack = subject:FindFirstChildOfClass("Backpack")
+	if backpack then
+		table.insert(containers, backpack)
+	end
+	if subject.Character then
+		table.insert(containers, subject.Character)
+	end
+	for _, container in ipairs(containers) do
 		if container then
 			for _, item in ipairs(container:GetChildren()) do
 				if item:IsA("Tool") then
