@@ -90,6 +90,13 @@ local MOMENTUM_MIN_MOVE = 0.12
 local MOMENTUM_BLOCK_DURATION = 0.75
 local DEATH_WATER_TOUCH_HEIGHT = 6
 
+-- Sudden-death storm: after the warmup the safe ice ring closes in, forcing
+-- players together for the finish. Phases drive both the lethal radius and the
+-- on-screen warnings, the way a battle-royale circle does.
+local STORM_WARMUP_FRACTION = 0.4
+local STORM_FINAL_RADIUS = 22
+local STORM_RING_COLOR = Color3.fromRGB(120, 200, 255)
+
 -- Visual tuning for the bigger ice arena.
 local ICE_FLOOR_COLOR = Color3.fromRGB(90, 230, 255)
 local ICE_TILE_COLOR = Color3.fromRGB(145, 235, 255)
@@ -1391,8 +1398,58 @@ function PolarPush:shouldEliminate(contestant)
 	return flatDistance > (self.eliminationRadius or self.radius + FALL_RADIUS_BUFFER)
 end
 
+function PolarPush:buildStormRing()
+	if self.stormRing and self.stormRing.Parent then
+		return
+	end
+	local ring = Shared.makePart("PolarStormRing", Vector3.new(self.radius * 2, 1.2, self.radius * 2), CFrame.new(self.origin + Vector3.new(0, 1.5, 0)), STORM_RING_COLOR, Enum.Material.Neon, self.folder)
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Transparency = 0.82
+	ring.CanCollide = false
+	ring.CanTouch = false
+	ring.CanQuery = false
+	self.stormRing = ring
+	self.stormPhase = 0
+end
+
+-- Drives the closing ring. Returns nothing; mutates self.eliminationRadius which
+-- shouldEliminate() already reads, so no extra elimination plumbing is needed.
+function PolarPush:updateStorm(now, roundStart, roundEnd)
+	local total = math.max(roundEnd - roundStart, 1)
+	local progress = math.clamp((now - roundStart) / total, 0, 1)
+
+	local safeRadius
+	if progress <= STORM_WARMUP_FRACTION then
+		safeRadius = self.radius + FALL_RADIUS_BUFFER
+		if self.stormPhase ~= 1 then
+			self.stormPhase = 1
+			self:announce("Polar Push: push players and break the ice walls")
+		end
+	else
+		local shrink = (progress - STORM_WARMUP_FRACTION) / (1 - STORM_WARMUP_FRACTION)
+		local fullRadius = self.radius + FALL_RADIUS_BUFFER
+		safeRadius = fullRadius + (STORM_FINAL_RADIUS - fullRadius) * shrink
+		if progress > 0.8 and self.stormPhase ~= 3 then
+			self.stormPhase = 3
+			self:announce("SUDDEN DEATH: the ice is collapsing inward!")
+		elseif progress <= 0.8 and self.stormPhase ~= 2 then
+			self.stormPhase = 2
+			self:announce("The storm closes in. Stay near the center!")
+		end
+	end
+
+	self.eliminationRadius = safeRadius
+	if self.stormRing then
+		local visibleRadius = math.max(safeRadius - FALL_RADIUS_BUFFER, STORM_FINAL_RADIUS)
+		self.stormRing.Size = Vector3.new(visibleRadius * 2, 1.2, visibleRadius * 2)
+		self.stormRing.Transparency = 0.7 + math.sin(now * 4) * 0.1
+	end
+end
+
 function PolarPush:run()
 	self:resetEdges()
+	self.eliminationRadius = self.radius + FALL_RADIUS_BUFFER
+	self:buildStormRing()
 	table.clear(self.lastPushAt)
 	table.clear(self.slideVelocity)
 	table.clear(self.walkMomentum)
@@ -1431,7 +1488,8 @@ function PolarPush:run()
 	Shared.spawnModifierPickups(self.folder, self:modifierCenter(), MODIFIER_RADIUS, 1)
 
 	self:announce("Polar Push: push players and break the ice walls")
-	local roundEnd = os.clock() + self.context.config.RoundDuration
+	local roundStart = os.clock()
+	local roundEnd = roundStart + self.context.config.RoundDuration
 	local nextModifierSpawn = os.clock() + MODIFIER_INTERVAL
 	local lastSlideUpdate = os.clock()
 
@@ -1439,6 +1497,8 @@ function PolarPush:run()
 		local now = os.clock()
 		local deltaTime = math.clamp(now - lastSlideUpdate, 0.02, 0.18)
 		lastSlideUpdate = now
+
+		self:updateStorm(now, roundStart, roundEnd)
 
 		if os.clock() >= nextModifierSpawn then
 			Shared.spawnModifierPickups(self.folder, self:modifierCenter(), MODIFIER_RADIUS, 1)
@@ -1497,6 +1557,10 @@ function PolarPush:run()
 	Shared.clearAllPlayerTools()
 	PolarPushModels.detachAll(mounts)
 	self.activeMounts = nil
+	self.eliminationRadius = self.radius + FALL_RADIUS_BUFFER
+	if self.stormRing then
+		self.stormRing.Transparency = 1
+	end
 	self:resetEdges()
 
 	Shared.awardSurvivors(self.name, function(message)
