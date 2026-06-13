@@ -80,7 +80,6 @@ safeLabel.Text = "🛡 SAFE ZONE"
 
 -- ── Zone detection ────────────────────────────
 local currentZone = nil
-local bannerTween = nil
 local SAFE_ZONES = {"Central Plaza", "AFK Reward Park", "Trading Plaza"}
 
 local function isSafe(zoneName)
@@ -104,10 +103,7 @@ local function showZoneBanner(zone)
 	bannerStroke.Color = zone.color
 	zoneBanner.Visible = true
 	safeFrame.Visible = isSafe(zone.name)
-	-- Animate in
-	zoneBanner.BackgroundTransparency = 0.8
-	local goal = {BackgroundTransparency = 0.4}
-	-- Simple tween-like fade using RunService
+	zoneBanner.BackgroundTransparency = 0.4
 end
 
 local function hideZoneBanner()

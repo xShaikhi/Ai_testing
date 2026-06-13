@@ -8,6 +8,8 @@ local ColorDrop = require(script.Parent.Minigames.ColorDrop)
 local ArenaBrawl = require(script.Parent.Minigames.ArenaBrawl)
 local PolarPush = require(script.Parent.Minigames.PolarPush)
 local LaserJump = require(script.Parent.Minigames.LaserJump)
+local BearHunt = require(script.Parent.Minigames.BearHunt)
+local GreenLight = require(script.Parent.Minigames.GreenLight)
 
 local CONFIG = {
 	Intermission = 10,
@@ -25,6 +27,8 @@ local CONFIG = {
 		ArenaBrawl = Vector3.new(0, 72, 1600),
 		PolarPush = Vector3.new(1600, 72, 0),
 		LaserJump = Vector3.new(0, 72, -1600),
+		BearHunt = Vector3.new(-1600, 72, 1600),
+		GreenLight = Vector3.new(1600, 72, 1600),
 	},
 }
 
@@ -100,7 +104,7 @@ else
 	rootFolder:SetAttribute("PreservedExistingRoot", true)
 end
 
-for _, childName in ipairs({ "Runtime", "World", "GiantHub", "Portals", "TestNPCs", "ColorDrop", "ArenaBrawl", "LaserJump" }) do
+for _, childName in ipairs({ "Runtime", "World", "GiantHub", "Portals", "TestNPCs", "ColorDrop", "ArenaBrawl", "LaserJump", "BearHunt", "GreenLight" }) do
 	local child = rootFolder:FindFirstChild(childName)
 	if child then
 		child:Destroy()
@@ -168,7 +172,7 @@ local function makeCylinder(name, size, cframe, color, material, parent)
 	return part
 end
 
-local function makeMountainCluster(name, center, color, parent)
+local function _makeMountainCluster(name, center, color, parent)
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
@@ -221,7 +225,7 @@ local function makeMapDome(name, center, radius, color, parent)
 	return folder
 end
 
-local function makeIslandRim(name, center, radius, color, parent)
+local function _makeIslandRim(name, center, radius, color, parent)
 	local folder = Instance.new("Folder")
 	folder.Name = name .. "CartoonRim"
 	folder.Parent = parent
@@ -240,7 +244,7 @@ local function makeIslandRim(name, center, radius, color, parent)
 	end
 end
 
-local function makeCartoonWorldBorder(parent)
+local function _makeCartoonWorldBorder(parent)
 	local borderColor = Color3.fromRGB(255, 212, 84)
 	local wallColor = Color3.fromRGB(35, 42, 58)
 	local half = 388
@@ -274,6 +278,8 @@ local function makeTerrainAccents(parent)
 		CONFIG.Arenas.ArenaBrawl,
 		CONFIG.Arenas.PolarPush,
 		CONFIG.Arenas.LaserJump,
+		CONFIG.Arenas.BearHunt,
+		CONFIG.Arenas.GreenLight,
 	}
 	for index = 1, 46 do
 		local x = random:NextNumber(-330, 330)
@@ -306,6 +312,9 @@ local function buildTerrain()
 	makeMapDome("ArenaBrawl", CONFIG.Arenas.ArenaBrawl, 98, Color3.fromRGB(255, 190, 80), terrainFolder)
 	makeMapDome("PolarPush", CONFIG.Arenas.PolarPush, 94, Color3.fromRGB(120, 220, 255), terrainFolder)
 	makeMapDome("LaserJump", CONFIG.Arenas.LaserJump, 96, Color3.fromRGB(70, 255, 190), terrainFolder)
+	makeMapDome("BearHunt", CONFIG.Arenas.BearHunt, 96, Color3.fromRGB(255, 170, 40), terrainFolder)
+	makeMapDome("GreenLight", CONFIG.Arenas.GreenLight, 110, Color3.fromRGB(90, 230, 110), terrainFolder)
+	makeTerrainAccents(terrainFolder)
 end
 
 local function buildHub()
@@ -326,12 +335,27 @@ local context = {
 	lobbySign = lobbySign,
 }
 
-local games = {
-	ColorDrop.new(context),
-	ArenaBrawl.new(context),
-	PolarPush.new(context),
-	LaserJump.new(context),
-}
+local games = {}
+
+local function addGame(gameName, constructor)
+	local ok, gameModule = xpcall(function()
+		return constructor(context)
+	end, debug.traceback)
+
+	if ok and gameModule then
+		table.insert(games, gameModule)
+	else
+		warn("[Minigames] Failed to create " .. gameName .. ": " .. tostring(gameModule))
+		announce(gameName .. " failed to load. Check Output.")
+	end
+end
+
+addGame("Color Drop", ColorDrop.new)
+addGame("Arena Brawl", ArenaBrawl.new)
+addGame("Polar Push", PolarPush.new)
+addGame("Laser Jump", LaserJump.new)
+addGame("Bear Hunt", BearHunt.new)
+addGame("Green Light", GreenLight.new)
 
 local function setLobbyText(text)
 	if lobbySign then
@@ -340,12 +364,14 @@ local function setLobbyText(text)
 end
 
 -- Absolute world spots aligned with the decorative Neon Robot World portal frames.
--- Order matches `games`: 1 ColorDrop, 2 ArenaBrawl, 3 PolarPush, 4 LaserJump.
+-- Order matches `games`: 1 ColorDrop, 2 ArenaBrawl, 3 PolarPush, 4 LaserJump, 5 BearHunt, 6 GreenLight.
 local portalPositions = {
 	Vector3.new(101, 0, -10),
 	Vector3.new(130, 0, -10),
 	Vector3.new(159, 0, -10),
 	Vector3.new(188, 0, -10),
+	Vector3.new(217, 0, -10),
+	Vector3.new(246, 0, -10),
 }
 
 local portalColors = {
@@ -353,6 +379,8 @@ local portalColors = {
 	Color3.fromRGB(255, 190, 80),
 	Color3.fromRGB(120, 220, 255),
 	Color3.fromRGB(70, 255, 190),
+	Color3.fromRGB(255, 170, 40),
+	Color3.fromRGB(90, 230, 110),
 }
 
 local function resetPlayersToLobby()
