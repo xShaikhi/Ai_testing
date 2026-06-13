@@ -727,7 +727,7 @@ local function pushMotionFromAttributes(instance, now)
 	return attack * release, progress
 end
 
-local function pushAlphaFromAttributes(instance, now)
+local function _pushAlphaFromAttributes(instance, now)
 	local alpha = pushMotionFromAttributes(instance, now)
 	return alpha
 end

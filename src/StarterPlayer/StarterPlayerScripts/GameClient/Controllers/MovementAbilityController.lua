@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local MovementConfig = require(ReplicatedStorage:WaitForChild("GameShared"):WaitForChild("Configs"):WaitForChild("MovementConfig"))
 
